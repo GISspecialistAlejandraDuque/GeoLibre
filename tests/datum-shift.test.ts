@@ -51,7 +51,6 @@ describe("datum shifts", () => {
       [5679, [5402325.267, 5401677.636], [13.67, 48.745]], // zone 5 (E-N)
       [21782, [160449.469, 25945.462], [9.555, 47.165]], // CH1903 / LV03C-G
       [28991, [-12107.807, 7783.867], [5.21, 52.225]], // Amersfoort / RD Old
-      [31300, [156512.079, 132694.211], [4.45, 50.505]], // BD72 / Belge Lambert 72
     ];
     for (const [code, xy, lonLat] of cases) {
       const raw = (toProj4({ ProjectedCSTypeGeoKey: code } as never).proj4 ?? "").replace(

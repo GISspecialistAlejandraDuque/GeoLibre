@@ -69,7 +69,9 @@ const SHIFTS: DatumShift[] = [
   {
     datum: "Belge 1972",
     datums: [6313],
-    crs: [4313, 31300, 31370],
+    // Not 31300: its Lambert (2SP Belgium) method rotates the grid by 29.2985",
+    // which neither proj4 nor PROJ applies, so it is ~745 m off before any shift.
+    crs: [4313, 31370],
     towgs84: "-106.8686,52.2978,-103.7239,0.3366,-0.457,1.8422,-1.2747",
   },
   {
