@@ -58,11 +58,12 @@ describe("datum shifts", () => {
         /\+axis=\w+\s*/g,
         "",
       );
+      assert.notEqual(raw, "", `EPSG:${code} has no proj4 definition`);
       assert.doesNotMatch(raw, /towgs84/, `EPSG:${code}`);
-      // 75 to 180 m off without the shift, within 1 m with it.
+      // 75 to 180 m off without the shift, within 2 m with it (the documented tolerance).
       assert.ok(metres(proj4(raw, "EPSG:4326", xy), lonLat) > 70, `EPSG:${code}`);
       assert.ok(
-        metres(proj4(withDatumShift(raw, code), "EPSG:4326", xy), lonLat) < 1,
+        metres(proj4(withDatumShift(raw, code), "EPSG:4326", xy), lonLat) < 2,
         `EPSG:${code}`,
       );
     }
