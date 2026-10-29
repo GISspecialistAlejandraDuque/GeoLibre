@@ -138,6 +138,20 @@ export function datumShiftFor(
   );
 }
 
+/**
+ * Definitions the EPSG tables get wrong, replaced whole, by CRS code. EPSG:31300
+ * (Belge Lambert 72) uses Lambert Conic Conformal (2SP Belgium), which rotates the
+ * grid by 29.2985" (EPSG Guidance Note 7-2, §1.3.1.4). proj4 has no such method and
+ * the tables give a plain LCC 2SP, about 745 m off. EPSG:31370 is the same grid
+ * written as a plain LCC 2SP, so its parameters (from the same tables) stand in.
+ */
+const REPLACED = new Map<number, string>([
+  [
+    31300,
+    "+proj=lcc +lat_0=90 +lon_0=4.367486666667 +lat_1=51.166667233333 +lat_2=49.8333339 +x_0=150000.013 +y_0=5400088.438 +ellps=intl +a=6378388 +b=6356911.9461279465 +pm=0 +no_defs",
+  ],
+]);
+
 /** GeoTIFF's "user-defined" geokey value. */
 const USER_DEFINED = 32767;
 
@@ -150,8 +164,9 @@ function keyCode(value: unknown): number | null {
 /**
  * Add the datum shift to a proj4 definition built for an EPSG CRS (or from a
  * GeoTIFF's geokeys), when the definition has none and the CRS is one whose
- * shift is known. A definition that already names a datum transformation
- * (`+towgs84`, `+datum=`, `+nadgrids=`) is returned unchanged.
+ * shift is known; a definition the tables get wrong (see `REPLACED`) is replaced
+ * first. A definition that already names a datum transformation (`+towgs84`,
+ * `+datum=`, `+nadgrids=`) is returned unchanged.
  *
  * @param definition A proj4 definition string.
  * @param crs The EPSG CRS code it was built for.
@@ -163,8 +178,9 @@ export function withDatumShift(
   datum?: number | null,
 ): string {
   if (/\+(towgs84|datum|nadgrids)=/.test(definition)) return definition;
+  const base = (crs != null ? REPLACED.get(crs) : undefined) ?? definition;
   const shift = datumShiftFor(crs, datum);
-  return shift ? `${definition.trim()} +towgs84=${shift}` : definition;
+  return shift ? `${base.trim()} +towgs84=${shift}` : base;
 }
 
 /**

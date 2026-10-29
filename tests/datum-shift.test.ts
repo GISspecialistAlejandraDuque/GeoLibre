@@ -51,7 +51,6 @@ describe("datum shifts", () => {
       [5679, [5402325.267, 5401677.636], [13.67, 48.745]], // zone 5 (E-N)
       [21782, [160449.469, 25945.462], [9.555, 47.165]], // CH1903 / LV03C-G
       [28991, [-12107.807, 7783.867], [5.21, 52.225]], // Amersfoort / RD Old
-      [31300, [156512.079, 132694.211], [4.45, 50.505]], // BD72 / Belge Lambert 72
     ];
     for (const [code, xy, lonLat] of cases) {
       const raw = (toProj4({ ProjectedCSTypeGeoKey: code } as never).proj4 ?? "").replace(
@@ -67,6 +66,25 @@ describe("datum shifts", () => {
         `EPSG:${code}`,
       );
     }
+  });
+
+  it("replaces EPSG:31300's definition, which the tables get wrong", () => {
+    // EPSG Guidance Note 7-2, §1.3.1.4 (Lambert Conic Conformal 2SP Belgium):
+    // this BD72 point is E 251763.20, N 153034.13 in EPSG:31300.
+    const bd72 = `+proj=longlat +ellps=intl +towgs84=${datumShiftFor(4313)} +no_defs`;
+    const lonLat = [5 + 48 / 60 + 26.533 / 3600, 50 + 40 / 60 + 46.461 / 3600];
+    const grid = (code: number) =>
+      (toProj4({ ProjectedCSTypeGeoKey: code } as never).proj4 ?? "").replace(/\+axis=\w+\s*/g, "");
+    const off = (definition: string) => {
+      const [e, n] = proj4(bd72, definition, lonLat);
+      return Math.hypot(e - 251763.2, n - 153034.13);
+    };
+    // The tables give a plain LCC 2SP, without the method's 29.2985" rotation.
+    assert.ok(off(grid(31300)) > 700);
+    const fixed = withDatumShift(grid(31300), 31300);
+    assert.ok(off(fixed) < 0.1);
+    // The same grid, and the same datum shift, as EPSG:31370.
+    assert.equal(fixed, withDatumShift(grid(31370).trim(), 31370));
   });
 
   it("leaves definitions that already shift, and codes it does not know", () => {
