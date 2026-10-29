@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { zipSync, strToU8 } from "fflate";
 import type { FeatureCollection, Point } from "geojson";
+import { MONTE_MARIO_ITALY_1 } from "./helpers/monte-mario-prj";
 
 // shapefile-zip statically pulls in shpjs, whose bundle reads the browser
 // `self` global at module-eval time; shim it before the dynamic import.
@@ -22,16 +23,6 @@ before(async () => {
 /** Metres between two lon/lat points (small distances). */
 const metres = ([x1, y1]: number[], [x2, y2]: number[]) =>
   Math.hypot((x1 - x2) * 111320 * Math.cos((y1 * Math.PI) / 180), (y1 - y2) * 110950);
-
-// The .prj GDAL writes for EPSG:3003 (Monte Mario / Italy zone 1): ESRI WKT,
-// with no TOWGS84.
-const MONTE_MARIO_ITALY_1 =
-  'PROJCS["Monte_Mario_Italy_1",GEOGCS["GCS_Monte_Mario",DATUM["D_Monte_Mario",' +
-  'SPHEROID["International_1924",6378388.0,297.0]],PRIMEM["Greenwich",0.0],' +
-  'UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],' +
-  'PARAMETER["False_Easting",1500000.0],PARAMETER["False_Northing",0.0],' +
-  'PARAMETER["Central_Meridian",9.0],PARAMETER["Scale_Factor",0.9996],' +
-  'PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]';
 
 describe("loadShapefileZip with a national datum's .prj", () => {
   it("places a Monte Mario shapefile where PROJ does", async () => {
