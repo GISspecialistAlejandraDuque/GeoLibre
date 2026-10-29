@@ -229,7 +229,10 @@ function closingBracket(text: string, open: number): number {
   let depth = 0;
   for (let i = open; i < text.length; i += 1) {
     if (text[i] === "[") depth += 1;
-    else if (text[i] === "]" && --depth === 0) return i + 1;
+    else if (text[i] === "]") {
+      depth -= 1;
+      if (depth === 0) return i + 1;
+    }
   }
   return -1;
 }

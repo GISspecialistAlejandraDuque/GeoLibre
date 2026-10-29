@@ -97,6 +97,35 @@ describe("datum shifts", () => {
     assert.equal(withWktDatumShift("not wkt"), "not wkt");
   });
 
+  it("matches every listed datum name, with or without ESRI's D_ prefix, in any case", () => {
+    // Each name's first Helmert parameter, to tell its shift from the others'.
+    const names: [string, string][] = [
+      ["OSGB_1936", "446.448"],
+      ["Ordnance_Survey_of_Great_Britain_1936", "446.448"],
+      ["TM65", "482.5"],
+      ["Deutsches_Hauptdreiecksnetz", "598.1"],
+      ["Amersfoort", "565.417"],
+      ["CH1903", "674.4"],
+      ["CH1903+", "674.374"],
+      ["Belge_1972", "-106.8686"],
+      ["Reseau_National_Belge_1972", "-106.8686"],
+      ["S_JTSK", "589"],
+      ["System_of_the_Unified_Trigonometrical_Cadastral_Network", "589"],
+      ["Monte_Mario", "-104.1"],
+      ["Hungarian_1972", "52.17"],
+      ["Hungarian_Datum_1972", "52.17"],
+      ["GGRS_1987", "-199.87"],
+      ["Greek_Geodetic_Reference_System_1987", "-199.87"],
+      ["Hong_Kong_1980", "-162.619"],
+    ];
+    for (const [name, dx] of names) {
+      for (const datum of [`D_${name}`, name.toLowerCase()]) {
+        const wkt = `GEOGCS["x",DATUM["${datum}",SPHEROID["a",1,2]]]`;
+        assert.ok(withWktDatumShift(wkt).includes(`TOWGS84[${dx},`), datum);
+      }
+    }
+  });
+
   it("replaces EPSG:31300's definition, which the tables get wrong", () => {
     // EPSG Guidance Note 7-2, §1.3.1.4 (Lambert Conic Conformal 2SP Belgium):
     // this BD72 point is E 251763.20, N 153034.13 in EPSG:31300.
