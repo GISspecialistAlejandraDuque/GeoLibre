@@ -3,8 +3,8 @@ import { before, describe, it } from "node:test";
 import { zipSync, strToU8 } from "fflate";
 import type { FeatureCollection, Point } from "geojson";
 
-// tauri-io statically pulls in shpjs, whose bundle reads the browser `self`
-// global at module-eval time; shim it before the dynamic import.
+// shapefile-zip statically pulls in shpjs, whose bundle reads the browser
+// `self` global at module-eval time; shim it before the dynamic import.
 (globalThis as { self?: unknown }).self ??= globalThis;
 
 let loadShapefileZip: (data: Uint8Array) => Promise<FeatureCollection>;
@@ -15,7 +15,7 @@ let writeShapefile: (geojson: FeatureCollection) => {
 };
 
 before(async () => {
-  ({ loadShapefileZip } = await import("../apps/geolibre-desktop/src/lib/tauri-io"));
+  ({ loadShapefileZip } = await import("../apps/geolibre-desktop/src/lib/file-io/shapefile-zip"));
   ({ writeShapefile } = await import("../apps/geolibre-desktop/src/lib/shapefile-writer"));
 });
 
