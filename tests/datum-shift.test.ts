@@ -10,6 +10,7 @@ import {
   installCogTilerDatumShift,
   withDatumShift,
   withGeoKeysDatumShift,
+  withWktDatumShift,
 } from "@geolibre/core";
 import { polygonizeLabels } from "@geolibre/processing";
 import { datumShiftEpsgResolver } from "../packages/plugins/src/plugins/epsg-datum-resolver";
@@ -67,6 +68,41 @@ describe("datum shifts", () => {
         `EPSG:${code}`,
       );
     }
+  });
+
+  it("adds the shift to a .prj's WKT by datum name, ESRI or OGC", () => {
+    // As GDAL writes a shapefile's .prj for EPSG:3003 (ESRI WKT, no TOWGS84).
+    const esri =
+      'PROJCS["Monte_Mario_Italy_1",GEOGCS["GCS_Monte_Mario",DATUM["D_Monte_Mario",' +
+      'SPHEROID["International_1924",6378388.0,297.0]],PRIMEM["Greenwich",0.0],' +
+      'UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],' +
+      'PARAMETER["False_Easting",1500000.0],PARAMETER["False_Northing",0.0],' +
+      'PARAMETER["Central_Meridian",9.0],PARAMETER["Scale_Factor",0.9996],' +
+      'PARAMETER["Latitude_Of_Origin",0.0],UNIT["Meter",1.0]]';
+    assert.ok(
+      withWktDatumShift(esri).includes(
+        'SPHEROID["International_1924",6378388.0,297.0],TOWGS84[-104.1,-49.1,-9.9,',
+      ),
+    );
+    // OGC names, and a spheroid with its own AUTHORITY node.
+    const ogc =
+      'GEOGCS["Amersfoort",DATUM["Amersfoort",SPHEROID["Bessel 1841",6377397.155,' +
+      '299.1528128,AUTHORITY["EPSG","7004"]],AUTHORITY["EPSG","6289"]],PRIMEM["Greenwich",0]]';
+    assert.ok(withWktDatumShift(ogc).includes('AUTHORITY["EPSG","7004"]],TOWGS84[565.417,'));
+    assert.ok(
+      withWktDatumShift(
+        'GEOGCS["x",DATUM["Reseau_National_Belge_1972",SPHEROID["a",1,2]]]',
+      ).includes("TOWGS84[-106.8686,"),
+    );
+    // Left alone: a TOWGS84 already there, an unknown datum, WGS84, no WKT at all.
+    const shifted = 'GEOGCS["x",DATUM["D_Monte_Mario",SPHEROID["a",1,2],TOWGS84[1,2,3]]]';
+    assert.equal(withWktDatumShift(shifted), shifted);
+    const unknown = 'GEOGCS["x",DATUM["D_Unknown",SPHEROID["a",1,2]]]';
+    assert.equal(withWktDatumShift(unknown), unknown);
+    const wgs84 =
+      'GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]]]';
+    assert.equal(withWktDatumShift(wgs84), wgs84);
+    assert.equal(withWktDatumShift("not wkt"), "not wkt");
   });
 
   it("leaves definitions that already shift, and codes it does not know", () => {
