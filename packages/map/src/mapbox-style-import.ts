@@ -580,12 +580,41 @@ function applyProportional(
  * exporter's zoom-driven `["interpolate", ["exponential", 2], ["zoom"], 0, w0,
  * 24, w24]` is a "map units" (meters) width, reversed via the zoom-0 stop.
  */
+/**
+ * The layer value behind the per-feature simplestyle lookup the exporter
+ * writes when a layer has simplestyle on (`simpleStyleNumberValue` in core):
+ * `["to-number", ["coalesce", ["get", property], base], base]`, which reads a
+ * feature's own value and falls back to the layer's. Opacities also come
+ * scaled by the layer opacity as `["*", lookup, opacity]` (`scaleByOpacity`),
+ * and the product is returned, as for a flat opacity. `null` for any other
+ * value.
+ */
+function simpleStyleLookupBase(value: unknown, property: string): number | null {
+  const array = asArray(value);
+  if (!array) return null;
+  if (array[0] === "*" && array.length === 3) {
+    const base = simpleStyleLookupBase(array[1], property);
+    const scale = asFiniteNumber(array[2]);
+    return base !== null && scale !== null ? base * scale : null;
+  }
+  if (array.length !== 3 || array[0] !== "to-number") return null;
+  const base = asFiniteNumber(array[2]);
+  const coalesce = asArray(array[1]);
+  return base !== null &&
+    coalesce?.length === 3 &&
+    coalesce[0] === "coalesce" &&
+    getProperty(coalesce[1]) === property &&
+    asFiniteNumber(coalesce[2]) === base
+    ? base
+    : null;
+}
+
 function parseLineWidth(
   value: unknown,
   patch: Partial<Omit<LayerStyle, "labels">>,
   warnings: string[],
 ): void {
-  const flat = asFiniteNumber(value);
+  const flat = asFiniteNumber(value) ?? simpleStyleLookupBase(value, "stroke-width");
   if (flat !== null) {
     patch.strokeWidth = flat;
     patch.strokeWidthUnit = "pixels";
@@ -924,7 +953,7 @@ export function parseMapboxStyle(input: unknown): MapboxStyleImportResult {
     // line/circle layer from contributing the color.
     if (fillColor.mode) colorClaimed = true;
     const opacity = paint["fill-opacity"];
-    const flatOpacity = asFiniteNumber(opacity);
+    const flatOpacity = asFiniteNumber(opacity) ?? simpleStyleLookupBase(opacity, "fill-opacity");
     if (flatOpacity !== null) {
       patch.fillOpacity = flatOpacity;
     } else if (opacity !== undefined) {
@@ -1001,7 +1030,7 @@ export function parseMapboxStyle(input: unknown): MapboxStyleImportResult {
     // circlePaint writes the layer's fillOpacity into circle-opacity, so a
     // point-only export (no fill layer) recovers its opacity here.
     const opacity = paint["circle-opacity"];
-    const flatOpacity = asFiniteNumber(opacity);
+    const flatOpacity = asFiniteNumber(opacity) ?? simpleStyleLookupBase(opacity, "marker-opacity");
     if (flatOpacity !== null) {
       patch.fillOpacity = flatOpacity;
     } else if (opacity !== undefined) {

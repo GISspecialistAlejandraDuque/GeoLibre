@@ -128,6 +128,48 @@ function roundTrip(
 }
 
 describe("parseMapboxStyle round-trips exported symbology", () => {
+  it("recovers the layer values behind the simplestyle lookups the exporter writes", () => {
+    // With simplestyle on, width and opacities export as a per-feature lookup that
+    // falls back to the layer's value; the import reads that fallback back.
+    const simple = { simpleStyleEnabled: true, strokeWidth: 3, fillOpacity: 0.4 };
+    const line = roundTrip(style(simple), lines());
+    assert.deepEqual(line.warnings, []);
+    assert.equal(line.style.strokeWidth, 3);
+    const polygon = roundTrip(style(simple), polygons());
+    assert.deepEqual(polygon.warnings, []);
+    assert.equal(polygon.style.fillOpacity, 0.4);
+    assert.equal(polygon.style.strokeWidth, 3);
+    const point = roundTrip(style(simple), points());
+    assert.deepEqual(point.warnings, []);
+    assert.equal(point.style.fillOpacity, 0.4);
+  });
+
+  it("folds a layer opacity scaled into a simplestyle opacity, like a flat one", () => {
+    const exported = buildMapboxStyle(
+      layer({ style: style({ simpleStyleEnabled: true, fillOpacity: 0.8 }), opacity: 0.5 }),
+      polygons(),
+    );
+    const imported = parseMapboxStyle(exported.style);
+    assert.equal(imported.style.fillOpacity, 0.4);
+  });
+
+  it("still warns on an expression that only resembles the simplestyle lookup", () => {
+    const result = parseMapboxStyle({
+      version: 8,
+      layers: [
+        {
+          id: "rivers",
+          type: "line",
+          // The fallbacks disagree, so this is an author's own expression.
+          paint: { "line-width": ["to-number", ["coalesce", ["get", "stroke-width"], 2], 5] },
+        },
+      ],
+    });
+    assert.deepEqual(result.warnings, [
+      "A line width expression could not be read; the layer keeps its current stroke width.",
+    ]);
+  });
+
   it("recovers a single-symbol polygon fill and stroke", () => {
     const original = style({
       fillColor: "#123456",
